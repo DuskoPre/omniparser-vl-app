@@ -1,0 +1,6 @@
+gradio
+requests
+Pillow
+torch
+omniparser
+paddleocr
