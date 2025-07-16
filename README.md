@@ -1,91 +1,130 @@
-# omniparser-vl-app
+
 # OmniParser-VL-App 🚀
 
 This repository contains a Dockerized Gradio application that combines **Microsoft OmniParser v2** (for GUI screenshot parsing) with **Qwen 2.5-VL-32B** (a vision-language model) via `llama.cpp`. The app can analyze a screenshot of a user interface, list its GUI elements, and answer questions about the UI.
 
-## Features
+---
 
-- **OmniParser v2** for extracting structured GUI elements (buttons, icons, text fields, etc.) and their associated text or icon descriptions from a screenshot.
-- **Qwen 2.5-VL (32B)** via `llama.cpp` for answering questions about the image (visual Q&A or description), running locally.
-- **Gradio UI** to upload an image, run the parser, and interact with the vision-language model.
+## 🧠 Features
 
-## Project Structure
+- ✅ **OmniParser v2** for detecting GUI elements (buttons, icons, text fields) and their labels from screenshots.
+- ✅ **Qwen 2.5-VL-32B** via `llama.cpp` for local image-based question answering.
+- ✅ **Gradio UI** to upload an image, parse elements, and chat with the vision model.
 
+---
+
+## 📁 Project Structure
+
+```
 omniparser-vl-app/
-├── Dockerfile # Docker configuration to set up environment and run servers
-├── app.py # Gradio application code (OmniParser + Qwen VL integration)
-├── requirements.txt # Python dependencies for the app
+├── Dockerfile              # Docker setup (GPU-enabled)
+├── app.py                  # Gradio application logic
+├── requirements.txt        # Python dependencies
 └── models/
-└── qwen2.5-vl-32b.QwenMM.gguf # (Not included) Qwen model file to be placed here (see below)
-bash
-Kopieren
-Bearbeiten
+    └── qwen2.5-vl-32b.QwenMM.gguf   # (Not included - download separately)
+```
 
-> **Note:** The `qwen2.5-vl-32b.QwenMM.gguf` model file is **not stored in this Git repo**. You need to download it separately (instructions below) because it’s large.
+> ⚠️ **Note:** The `qwen2.5-vl-32b.QwenMM.gguf` model is not included due to size. You'll need to download it yourself (see below).
 
-## Getting Started
+---
+
+## 🚀 Getting Started
 
 ### 1. Download the Qwen2.5-VL Model
 
-Obtain the Qwen 2.5-VL 32B model in GGUF format and place it in the `models/` directory. For example, you can download a Qwen-VL-Chat GGUF from Hugging Face:
+Download the Qwen 2.5-VL 32B GGUF model and place it in the `models/` folder:
 
-
+```bash
 mkdir -p models
 wget -O models/qwen2.5-vl-32b.QwenMM.gguf \
   https://huggingface.co/Qwen/Qwen-VL-Chat-GGUF/resolve/main/qwen2.5-vl-32b.QwenMM.gguf
-Ensure the file path matches what is used in the Docker CMD (/app/models/qwen2.5-vl-32b.QwenMM.gguf). If you download a different variant or quantization, update the Dockerfile CMD accordingly.
+```
+
+Make sure the file path matches the one in the Dockerfile command:
+```
+/app/models/qwen2.5-vl-32b.QwenMM.gguf
+```
+
+---
 
 ### 2. Build the Docker Image
-Build the Docker image using the provided Dockerfile:
-bash
-Kopieren
-Bearbeiten
-docker build -t omniparser-vl-app .
-This will create a Docker image named omniparser-vl-app containing:
-OmniParser v2 and its dependencies (YOLO-based detector, etc.),
-The Gradio app (app.py),
-llama.cpp built with HTTP server support,
-(No model inside yet – we’ll provide the model at runtime).
-Note: If you plan to run the model on CPU only, you might remove nvidia/cuda base image and use a lighter base. The current setup assumes you have an NVIDIA GPU and CUDA for optimal performance (especially since Qwen2.5-32B is a large model).
 
-It uses NVIDIA’s CUDA runtime base image, expecting that you might leverage GPU acceleration (for both OmniParser and the llama.cpp model).
-Installs system packages needed (git, wget, build tools, libraries for image processing like libgl, etc.).
-Installs Python packages listed in requirements.txt.
-Clones and builds llama.cpp with LLAMA_CUBLAS=1 and LLAMA_SERVER=1 to enable GPU support and the HTTP server endpoint.
-Copies in app.py and sets the working directory.
-Creates a directory for model files (/app/models). This is where you should put the qwen2.5-vl-32b.QwenMM.gguf model file. We do not copy the model inside the Docker image during build (to keep the image lean), so the model can be added later (either by mounting a volume or by building with the model file manually added to the context).
-Exposes port 7861 (for the Gradio UI) and 8080 (for the llama.cpp server API).
-The CMD starts the llama.cpp server (pointing to the Qwen model) and then launches the Gradio app.
+Run the following in the project root:
+
+```bash
+docker build -t omniparser-vl-app .
+```
+
+This builds a container that includes:
+
+- OmniParser v2 and its ML dependencies
+- Gradio frontend
+- llama.cpp built with GPU + HTTP server support
+
+> 💡 The base image uses CUDA. You’ll need an NVIDIA GPU + drivers for full functionality.
+
+---
 
 ### 3. Run the Container
-Run the Docker container, exposing the necessary ports and mounting the model file into it:
-bash
-Kopieren
-Bearbeiten
+
+```bash
 docker run --gpus all -p 7861:7861 -p 8080:8080 \
   -v $(pwd)/models:/app/models \
   omniparser-vl-app
-Explanation:
---gpus all enables GPU access for the container (remove this if running on CPU).
--p 7861:7861 maps the Gradio app to your host’s port 7861.
--p 8080:8080 maps the llama.cpp completion API to host port 8080 (in case you want to query it directly or for debugging).
--v $(pwd)/models:/app/models mounts the models folder (with the Qwen GGUF file) into the container’s /app/models. This way, the container can load the model without the image needing to contain it.
-omniparser-vl-app is the image name to run.
+```
 
-### 4. Use the Application
-Once the container is running:
-Open your browser to http://localhost:7861. You should see the Gradio interface.
-Upload a screenshot of a GUI.
-Click "Run OmniParser" to get the parsed GUI elements (the right panel will show an annotated image and a list of elements).
-(Optional) Enter a question in the text box (for example, "What is the purpose of this window?" or "Describe the interface.") and click "Ask Qwen (llama.cpp)". The Qwen 2.5-VL model will generate a response about the image.
-You can also access the Qwen model’s API via http://localhost:8080/completion if needed (this is what the app uses under the hood).
+**Flags explained:**
+- `--gpus all`: Enables GPU usage
+- `-p 7861:7861`: Exposes Gradio app on `localhost:7861`
+- `-p 8080:8080`: Exposes llama.cpp API at `localhost:8080/completion`
+- `-v $(pwd)/models:/app/models`: Mounts the model directory into the container
 
-### 5. Customizations and Notes
-LLaVA vs Qwen in OmniParser: By default, OmniParser uses a smaller vision-language model (LLaVA) internally for understanding iconography (vlm_model='llava'). We pair it with the more powerful Qwen model for chat. In future, it’s possible to switch OmniParser to use Qwen for both parsing and chat if integrated differently, but that would require more extensive changes.
-System Prompts: The prompt format used is already aligned with Qwen-VL’s expected input (including the <image> token). If needed, you could add a system prompt by modifying the payload with a <|im_start|>system\n...<|im_end|> segment.
-Model Quantization: Running Qwen 32B requires significant RAM/VRAM. If you run on CPU or have limited memory, consider using a quantized GGUF model (e.g., Q4_K_M or Q8_0). Just ensure the file name in the Docker CMD matches the file you use.
-OCR Dependency: If you find text is not being extracted from the image, double-check that paddleocr is installed in the container. We left it optional to keep the image lighter. Install it via pip or add to requirements.txt if needed, then rebuild.
-Future Improvements: You can integrate everything into a single multi-modal model (like using a unified LLaVA or another vision-chat model for both layout parsing and Q&A). Also, you might consider adding a system prompt or persona for Qwen to better guide its answers (this could be done by editing the prompt string in app.py).
+---
 
-### Contributing
-Feel free to modify this project or use it as a template. If you make improvements (like a better UI or integration with other models), consider creating a template repository or sharing your version for others to learn from. Happy coding! 🎉
+## 🖼 Using the App
+
+1. Visit [http://localhost:7861](http://localhost:7861)
+2. Upload a screenshot (e.g., a GUI or webpage)
+3. Click **“Run OmniParser”** to analyze the image
+4. Enter a question and click **“Ask Qwen (llama.cpp)”** to get a response
+
+You can also access the Qwen model API directly at:
+
+```
+http://localhost:8080/completion
+```
+
+---
+
+## ⚙️ Notes & Customization
+
+- **LLaVA vs Qwen:** OmniParser uses `llava` internally for element parsing, while Qwen handles VQA.
+- **System Prompts:** You can add a system prompt by prepending a `<|im_start|>system\n...<|im_end|>` block to your prompt.
+- **Model Quantization:** Consider Q4_K_M or Q8_0 variants for lower VRAM usage if needed.
+- **OCR Dependency:** If text isn't extracted, make sure `paddleocr` is installed (or add it to `requirements.txt`).
+- **Lighter CPU Builds:** You may remove CUDA from the base image if GPU isn’t needed (e.g., for low-load CPU testing).
+
+---
+
+## 💡 Future Improvements
+
+- ✅ Replace LLaVA in OmniParser with Qwen for unified reasoning
+- ✅ Add prompt tuning or system persona
+- ✅ Integrate model fallback or streaming mode
+- ✅ Deploy to Hugging Face Spaces or GPU cloud
+
+---
+
+## 🤝 Contributing
+
+Feel free to fork, remix, or use this as a GitHub Template. PRs welcome!
+
+---
+
+## 📄 License
+
+MIT (or specify your own)
+
+---
+
+Happy parsing! 🎉
