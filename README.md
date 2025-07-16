@@ -48,6 +48,15 @@ llama.cpp built with HTTP server support,
 (No model inside yet – we’ll provide the model at runtime).
 Note: If you plan to run the model on CPU only, you might remove nvidia/cuda base image and use a lighter base. The current setup assumes you have an NVIDIA GPU and CUDA for optimal performance (especially since Qwen2.5-32B is a large model).
 
+It uses NVIDIA’s CUDA runtime base image, expecting that you might leverage GPU acceleration (for both OmniParser and the llama.cpp model).
+Installs system packages needed (git, wget, build tools, libraries for image processing like libgl, etc.).
+Installs Python packages listed in requirements.txt.
+Clones and builds llama.cpp with LLAMA_CUBLAS=1 and LLAMA_SERVER=1 to enable GPU support and the HTTP server endpoint.
+Copies in app.py and sets the working directory.
+Creates a directory for model files (/app/models). This is where you should put the qwen2.5-vl-32b.QwenMM.gguf model file. We do not copy the model inside the Docker image during build (to keep the image lean), so the model can be added later (either by mounting a volume or by building with the model file manually added to the context).
+Exposes port 7861 (for the Gradio UI) and 8080 (for the llama.cpp server API).
+The CMD starts the llama.cpp server (pointing to the Qwen model) and then launches the Gradio app.
+
 ### 3. Run the Container
 Run the Docker container, exposing the necessary ports and mounting the model file into it:
 bash
