@@ -123,7 +123,7 @@ Feel free to fork, remix, or use this as a GitHub Template. PRs welcome!
 
 ## 📄 License
 
-MIT (or specify your own)
+Apache-2.0 (https://github.com/DuskoPre/omniparser-vl-app#)
 
 ---
 
